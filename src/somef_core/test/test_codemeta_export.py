@@ -638,12 +638,13 @@ class TestCodemetaExport(unittest.TestCase):
 
         copyright_holder = json_content[constants.CAT_CODEMETA_COPYRIGHTHOLDER]
         copyright_year = json_content[constants.CAT_CODEMETA_COPYRIGHTYEAR]
-
+    
         # assert copyright_holder == "Daniel Garijo, Information Sciences Institute, USC."
         assert copyright_holder == [{constants.PROP_NAME: "Daniel Garijo, Information Sciences Institute, USC."}]
         assert copyright_year == "2016"
 
         os.remove(test_data_path + "test_issue_886_apache_code.json")
+
 
 
     def test_issue_936_contributors(self):
@@ -692,44 +693,47 @@ class TestCodemetaExport(unittest.TestCase):
         os.remove(test_data_path + "test_issue_936_contributors.json")
         
 
+    # Not needed because test_issue_135_funding_grant_export is more updated and checks that funding and funder information
+    # with structured grant objects (codemeta v3), instead of a plain string,
+    # with the funder nested inside each grant.
 
-    def test_issue_960_funding(self):
-        """Checks whether funding and funder information are correctly extracted and exported to CodeMeta"""
-        output_path = test_data_path + "test_issue_960_funding.json"
+    # def test_issue_960_funding(self):
+    #     """Checks whether funding and funder information are correctly extracted and exported to CodeMeta"""
+    #     output_path = test_data_path + "test_issue_960_funding.json"
 
-        somef_cli.run_cli(threshold=0.8,
-                            ignore_classifiers=False,
-                            repo_url=None,
-                            local_repo=test_data_repositories + "codemeta_repo",
-                            doc_src=None,
-                            in_file=None,
-                            output=None,
-                            graph_out=None,
-                            graph_format="turtle",
-                            codemeta_out=output_path,
-                            pretty=True,
-                            missing=False,
-                            readme_only=False)
+    #     somef_cli.run_cli(threshold=0.8,
+    #                         ignore_classifiers=False,
+    #                         repo_url=None,
+    #                         local_repo=test_data_repositories + "codemeta_repo",
+    #                         doc_src=None,
+    #                         in_file=None,
+    #                         output=None,
+    #                         graph_out=None,
+    #                         graph_format="turtle",
+    #                         codemeta_out=output_path,
+    #                         pretty=True,
+    #                         missing=False,
+    #                         readme_only=False)
         
-        text_file = open(output_path, "r")
-        data = text_file.read()
-        text_file.close()
-        json_content = json.loads(data)
+    #     text_file = open(output_path, "r")
+    #     data = text_file.read()
+    #     text_file.close()
+    #     json_content = json.loads(data)
 
-        expected_funding = "1549758; Codemeta: A Rosetta Stone for Metadata in Scientific Software"
-        self.assertEqual(json_content.get("funding"), expected_funding, 
-                        f"Expected funding '{expected_funding}' not found in exported CodeMeta")
+    #     expected_funding = "1549758; Codemeta: A Rosetta Stone for Metadata in Scientific Software"
+    #     self.assertEqual(json_content.get("funding"), expected_funding, 
+    #                     f"Expected funding '{expected_funding}' not found in exported CodeMeta")
 
-        funder = json_content.get("funder") 
-        self.assertIsNotNone(funder, "Funder field missing in exported CodeMeta")
+    #     funder = json_content.get("funder") 
+    #     self.assertIsNotNone(funder, "Funder field missing in exported CodeMeta")
         
-        if isinstance(funder, dict):
-            self.assertEqual(funder.get("name"), "National Science Foundation", "Funder name mismatch")
-            self.assertEqual(funder.get("@id"), "https://doi.org/10.13039/100000001", "Funder @id mismatch")
-        else:
-            self.assertEqual(funder, "National Science Foundation", "Funder name mismatch")
+    #     if isinstance(funder, dict):
+    #         self.assertEqual(funder.get("name"), "National Science Foundation", "Funder name mismatch")
+    #         self.assertEqual(funder.get("@id"), "https://doi.org/10.13039/100000001", "Funder @id mismatch")
+    #     else:
+    #         self.assertEqual(funder, "National Science Foundation", "Funder name mismatch")
 
-        os.remove(output_path)
+    #     os.remove(output_path)
 
 
     def test_issue_953_publication_reconciliation_codemeta(self):
@@ -820,14 +824,13 @@ class TestCodemetaExport(unittest.TestCase):
     def test_schema_owner(self):
         """Checks that organization owner is correctly exported as schema:owner with expanded context (issue #892)"""
 
-
         assert "schema:owner" in self.json_content, "Missing schema:owner in JSON"
         owners = self.json_content["schema:owner"]
         assert isinstance(owners, list), "schema:owner should be a list"
         assert any(o.get("@type") == "Organization" for o in owners), "schema:owner should contain an Organization"
         assert any(o.get("name") == "KnowledgeCaptureAndDiscovery" for o in owners), "Expected KnowledgeCaptureAndDiscovery as owner"
         
-        
+              
     def test_codemeta_sunpy_reference_publication(self):
         """
         Checks that a CITATION.cff with DOI, title and structured authors is exported as
@@ -960,6 +963,34 @@ class TestCodemetaExport(unittest.TestCase):
 
         os.remove(output_path)
 
+    def test_issue_135_funding_grant_export(self):
+        """Funding Grant entries are exported to codemeta format"""
+        output_path = test_data_path + 'test_codemeta_funding_grant.json'
+        somef_cli.run_cli(threshold=0.8,
+                        ignore_classifiers=False,
+                        repo_url=None,
+                        local_repo=test_data_repositories + "codemeta_repo",
+                        output=None,
+                        codemeta_out=output_path,
+                        pretty=True,
+                        readme_only=False)
+
+        with open(output_path) as f:
+            json_content = json.load(f)
+
+        funding = json_content.get(constants.CAT_FUNDING, [])
+        assert funding, "Key 'funding' is missing in JSON"
+
+        grant = funding[0]      
+        assert grant["@type"] == "Grant"
+        assert grant["name"] == "1549758; Codemeta: A Rosetta Stone for Metadata in Scientific Software"
+        assert grant["funder"] == {
+            "@type": "Organization",
+            "name": "National Science Foundation",
+            "url": "https://doi.org/10.13039/100000001",
+        }
+
+        os.remove(output_path)
 
     @classmethod
     def tearDownClass(cls):

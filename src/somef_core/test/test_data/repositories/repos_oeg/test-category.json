@@ -1,4 +1,14 @@
 {
+  "application_type": [
+    {
+      "confidence": 1,
+      "result": {
+        "type": "String",
+        "value": "software"
+      },
+      "technique": "software_type_heuristics"
+    }
+  ],
   "code_repository": [
     {
       "confidence": 1,
@@ -245,7 +255,7 @@
     }
   ],
   "somef_provenance": {
-    "date": "2026-08-04 10:55:11",
+    "date": "2026-08-26 12:18:20",
     "somef_schema_version": "1.0.0",
     "somef_version": "0.11.2"
   },

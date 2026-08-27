@@ -22,6 +22,21 @@ CONF_DOWNLOAD_LIMIT_MB = "download_limit_mb"
 
 __DEFAULT_SOMEF_CONFIGURATION_FILE__ = "~/.somef_core/config.json"
 
+
+# RDF vocabularies for ontology metadata extraction
+DC_NAMESPACE = "http://purl.org/dc/elements/1.1/"
+DCTERMS_NAMESPACE = "http://purl.org/dc/terms/"
+VANN_NAMESPACE = "http://purl.org/vocab/vann/"
+OWL_NAMESPACE = "http://www.w3.org/2002/07/owl#"
+RDFS_NAMESPACE = "http://www.w3.org/2000/01/rdf-schema#"
+SCHEMA_NAMESPACE = "http://schema.org/"
+SKOS_NAMESPACE = "http://www.w3.org/2004/02/skos/core#"
+PROV_NAMESPACE = "http://www.w3.org/ns/prov#"
+PAV_NAMESPACE = "http://purl.org/pav/"
+MOD_NAMESPACE = "http://www.isibang.ac.in/ns/mod#"
+CC_NAMESPACE = "http://creativecommons.org/ns#"
+FOAF_NAMESPACE = "http://xmlns.com/foaf/0.1/"
+
 # constants with regular expressions. Right now this has room for becoming more efficient
 REGEXP_BINDER = r'\[\!\[Binder\]([^\]]+)\]\(([^)]+)\)'
 REGEXP_READTHEDOCS = r'http[s]?://[-a-zA-Z0-9+&@#/%?=~_|!:,.;]*[-a-zA-Z0-9+&@#/%=~_|]+.readthedocs.io/'
@@ -94,7 +109,7 @@ REGEXP_CHOOSE_LICENSE = r'choosealicense\.com/licenses/([^/\s]+)'
 # REGEXP_LTD_INC = r'\b(inc|ltd|llc|corporation)([.,]|\b)'
 REGEXP_LTD_INC = r'\b(inc|ltd|llc|corporation|foundation|community|project|team|group|society|institute|association|consortium|organization|organisation)([.,]|\b)'
 
-# Detect duplicate all kind of dois. te
+# Detect duplicate all kind of dois. 
 REGEXP_ALL_DOIS = r'10\.\d{4,9}/[-._;()/:A-Z0-9]+'
 
 # Detect zenodo latest doi in readme. 
@@ -263,12 +278,15 @@ PROP_ORIGINAL_HEADER = "original_header"
 PROP_PAGES = "pages"
 PROP_PARENT_HEADER = "parent_header"
 PROP_PREFERRED_CITATION = "is_preferred_citation"
+PROP_PREFERRED_NS_PREFIX = "preferred_namespace_prefix"
+PROP_PREFERRED_NS_URI = "preferred_namespace_uri"
 PROP_RELEASE_ID = "release_id"
 PROP_ROLE = "role"
 PROP_SIZE = "size"
 PROP_SPDX_ID = "spdx_id"
 PROP_TAG = "tag"
 PROP_COMMIT = "commit"
+PROP_URI = "uri"
 PROP_URL = "url"
 PROP_USERNAME = "username"
 PROP_VERSION = "version"
@@ -312,6 +330,7 @@ FILE_DUMP = "File_dump"
 AGENT = "Agent"
 RELEASE = "Release"
 LICENSE = "License"
+ONTOLOGY = "Ontology"
 # PUBLICATION = "Publication"
 LANGUAGE = "Programming_language"
 SOFTWARE_APPLICATION = "SoftwareApplication"
@@ -567,6 +586,8 @@ PROP_CODEMETA_TYPE = "@type"
 TYPE_CONTRIBUTOR_ORGANIZATION = "Organization"
 TYPE_CONTRIBUTOR_PERSON = "Person"
 
+TYPE_GRANT = "Grant"
+TYPE_ORGANIZATION = "Organization"
 # DOCKER labels maintainer
 # REGEXP_MAINTAINER_LABEL_OCI = r'^\s*LABEL\s+org\.opencontainers\.image\.authors\s*=\s*["\']?(.+?)["\']?\s*$'
 REGEXP_MAINTAINER_LABEL_OCI = r'^\s*LABEL\s+org\.opencontainers\.image\.authors\s*=\s*["\']([^"\'\\]+)["\']?\s*(?:\\)?\s*$'
@@ -731,3 +752,28 @@ PROP_GRANT_ID = "grant_id"
 PROP_FUNDER = "funder"
 PROP_START_DATE = "start_date"
 PROP_END_DATE = "end_date"
+
+# Funding badges regex to detect funding links in README
+REGEXP_FUNDING_BADGES = (
+    r'https?://(?:www\.)?(?:'
+    r'github\.com/sponsors/|'
+    r'opencollective\.com/|'
+    r'patreon\.com/|'
+    r'ko-fi\.com/|'
+    r'liberapay\.com/|'
+    r'buymeacoffee\.com/|'
+    r'paypal\.me/|'
+    r'paypal\.com/donate'
+    r')[^\s()\[\]{}<>"\']+'
+)
+
+FUNDING_PLATFORM_NAMES = {
+    "github.com/sponsors": "GitHub Sponsors",
+    "opencollective.com": "Open Collective",
+    "patreon.com": "Patreon",
+    "ko-fi.com": "Ko-fi",
+    "buymeacoffee.com": "Buy Me a Coffee",
+    "liberapay.com": "Liberapay",
+    "paypal.me": "PayPal",
+    "paypal.com/donate": "PayPal",
+}

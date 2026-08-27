@@ -14,6 +14,19 @@ Removes everything related to machine learning:
   - ML dependencies in pyproject.toml
   - ML test files
 
+File	        Test	                            Reason for removal
+test_cli.py	    test_categorization	                application_type → check_ontologies
+test_cli.py	    test_issue_314_2	                description → supervised_classification
+test_cli.py	    test_issue_314_3	                description → supervised_classification
+test_cli.py	    test_issue_379	                    description → supervised_classification
+test_cli.py	    test_issue_388	                    ontologies → extract_ontologies
+test_cli.py	    test_issue_428	                    description → supervised_classification
+test_cli.py	    test_issue_457	                    description → supervised_classification
+test_cli.py	    test_issue_531_ontology_metadata	ontologies → extract_ontologies
+
+*Note: New tests from somef about classifieres, models, ontolggies should be removed or comeented in somef-core
+
+
 It also removes (by decision of the original fork maintainers):
   - extract_ontologies.py, mapping/, export/turtle_export.py (they are not ML but
     the original fork removed them and that behavior is kept).

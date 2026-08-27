@@ -5,9 +5,9 @@ import logging
 import tomllib
 import configparser
 import re
+
 from nbformat.reader import NotJSONError
 from chardet import detect
-
 from .extract_workflows import is_file_workflow
 from .process_results import Result
 from .utils import constants
@@ -165,6 +165,7 @@ def check_extras(path_repo):
                     return False
     return True
 
+
 def check_package_library(path_repo):
     """Function which detects if a repository contains a package
        definition file (i.e., it is packaged software)"""
@@ -178,7 +179,6 @@ def check_package_library(path_repo):
             if file in package_files:
                 return True
     return False
-
 
 def check_service(path_repo):
     """Function which detects if a repository is a Service (web service/API)
@@ -302,7 +302,6 @@ def check_command_line_from_package(path_repo):
                     logging.error(f"Error parsing {file_path}: {e}")
 
     return False
-
 
 def check_workflow(repo_path, title):
     """Function which checks inside text for presence of repository being a workflow and analysis of the 

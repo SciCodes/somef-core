@@ -692,7 +692,6 @@ class TestCli(unittest.TestCase):
         assert data.find(constants.FORMAT_DOCKERFILE) >= 0
         os.remove(test_data_path + "test-366.json")
 
-
     def test_issue_443(self):
         somef_cli.run_cli(threshold=0.8,
                           ignore_classifiers=False,
@@ -812,4 +811,5 @@ class TestCli(unittest.TestCase):
         text_file.close()
         assert constants.CAT_ACKNOWLEDGEMENT not in json_content
         os.remove(test_data_path + "repositories/software_catalog/test-567.json")
+
 

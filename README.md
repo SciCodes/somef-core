@@ -1,8 +1,8 @@
-# Software Metadata Extraction Framework (SOMEF) - Core package functionality
+# Software Metadata Extraction Framework (SOMEF)
 
-<!-- [![Documentation Status](https://readthedocs.org/projects/somef/badge/?version=latest)](https://somef.readthedocs.io/en/latest/?badge=latest)
+[![Documentation Status](https://readthedocs.org/projects/somef/badge/?version=latest)](https://somef.readthedocs.io/en/latest/?badge=latest)
 [![Python](https://img.shields.io/pypi/pyversions/somef.svg?style=plastic)](https://badge.fury.io/py/somef) [![PyPI](https://badge.fury.io/py/somef.svg)](https://badge.fury.io/py/somef) [![DOI](https://zenodo.org/badge/190487675.svg)](https://zenodo.org/badge/latestdoi/190487675) [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/KnowledgeCaptureAndDiscovery/somef/HEAD?filepath=notebook%2FSOMEF%20Usage%20Example.ipynb) [![Project Status: Active – The project has reached a stable, usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
-[![SWH](https://archive.softwareheritage.org/badge/origin/https://github.com/KnowledgeCaptureAndDiscovery/somef/)](https://archive.softwareheritage.org/browse/origin/?origin_url=https://github.com/KnowledgeCaptureAndDiscovery/somef)[![SWH](https://archive.softwareheritage.org/badge/swh:1:dir:ebfdd002d998a2e9054c974ba8206d867b99fcfa/)](https://archive.softwareheritage.org/swh:1:dir:ebfdd002d998a2e9054c974ba8206d867b99fcfa;origin=https://github.com/KnowledgeCaptureAndDiscovery/somef;visit=swh:1:snp:55accea716399b0cc89486e37fbaab028ed8e748;anchor=swh:1:rev:cefb0f9a53ba1fae671819f943e84c087aed6f7d) -->
+[![SWH](https://archive.softwareheritage.org/badge/origin/https://github.com/KnowledgeCaptureAndDiscovery/somef/)](https://archive.softwareheritage.org/browse/origin/?origin_url=https://github.com/KnowledgeCaptureAndDiscovery/somef)[![SWH](https://archive.softwareheritage.org/badge/swh:1:dir:ebfdd002d998a2e9054c974ba8206d867b99fcfa/)](https://archive.softwareheritage.org/swh:1:dir:ebfdd002d998a2e9054c974ba8206d867b99fcfa;origin=https://github.com/KnowledgeCaptureAndDiscovery/somef;visit=swh:1:snp:55accea716399b0cc89486e37fbaab028ed8e748;anchor=swh:1:rev:cefb0f9a53ba1fae671819f943e84c087aed6f7d)
 
 <img src="docs/logo.png" alt="logo" width="150"/>
 
@@ -57,7 +57,7 @@ When using `-e`, publication metadata is enriched via OpenAlex. We recognize the
 - **Forks url**: Links to forks made of the project
 - **Full name**: Name + owner (owner/name)
 - **Full title**: If the repository is a short name, we will attempt to extract the longer version of the repository name
-- **Funding**: Funding information associated with the project. **Note**: This information is extracted from existing `codemeta.json` files within the repository. When using `-e`, the project data is enriched with OpenAIRE, adding:
+- **Funding**: Funding information associated with the project. **Note**: This information is extracted from `codemeta.json` files within the repository and from the README (funding section headers and links to crowdfunding platforms). When using `-e`, the project data is enriched with OpenAIRE, adding:
 - `project_code`: Project code
 - `project_title`: Project title
 - `project_acronym`: Project acronym
@@ -74,7 +74,7 @@ When using `-e`, publication metadata is enriched via OpenAlex. We recognize the
 - **Logo**: Main logo used to represent the target software component
 - **Maintainer**: Individuals or teams responsible for maintaining the software component, extracted from the CODEOWNERS file
 - **Name**: Name identifying a software component
-- **Ontologies**: URL and path to the ontology files present in the repository
+- **Ontologies**: Structured representation of the ontologies present in the repository
 - **Owner**: Name and type of the user or organization in charge of the repository
 - **Package distribution**: Links to package sites like pypi in case the repository has a package available.
 - **Package files**: Links to package files used to wrap the project in a package.
@@ -305,8 +305,34 @@ Usage: somef configure [OPTIONS]
 
 Options:
   -a, --auto  Automatically configure SOMEF
+  -b, --base_uri URL  Base URI for somef transformations
   -h, --help  Show this message and exit.
+
+Commands:
+  test  Test the configured API tokens
 ```
+
+### Testing your tokens
+
+To verify that the authentication tokens stored in your configuration file are valid **without having to run SOMEF**, run:
+
+```bash
+somef configure test
+```
+
+This contacts each configured provider's API (api.github.com, gitlab.com, codeberg.org, bitbucket.org) with the token stored in ~/.somef/config.json and reports the status of each one, e.g.:
+```bash
+GitHub: token valid
+GitLab: token valid
+Codeberg: token valid
+Bitbucket: token valid but with limited permissions (403)
+```
+
+401 means the token is invalid; 403 means it is valid but lacks the required scopes; any other non-200 response is reported as unexpected.
+Providers without a configured token are simply skipped.
+Bitbucket tokens must start with Basic (as set by somef configure); otherwise the test reports an incorrect format without contacting the API.
+The command exits with a non-zero status code if any configured token is invalid, which is useful for scripts and CI.
+
 
 ### Updating SOMEF
 
