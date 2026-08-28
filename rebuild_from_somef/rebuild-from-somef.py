@@ -347,7 +347,7 @@ def sync_to_working_tree(tree_dir):
         shutil.copytree(src_src, src_dst)
 
     # Copy key root files
-    for fname in ["pyproject.toml", "config.json", "README.md", "LICENSE"]:
+    for fname in ["pyproject.toml", "config.json", "LICENSE"]:
         full = os.path.join(tree_dir, fname)
         if os.path.exists(full):
             shutil.copy2(full, os.path.join(REPO_ROOT, fname))

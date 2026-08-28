@@ -19,7 +19,7 @@ def cli():
     click.echo("SOftware Metadata Extraction Framework (SOMEF) Command Line Interface")
 
 
-@cli.group(help="Configure repository credentials and classifiers file path", invoke_without_command=True)
+@cli.group(help="Configure repository credentials file path", invoke_without_command=True)
 @click.option('-a', '--auto', help="Automatically configure SOMEF", is_flag=True, default=False)
 @click.option('-b', '--base_uri', type=URLParamType(), help="Base URI for somef transformations",
               default=constants.CONF_DEFAULT_BASE_URI)
@@ -64,7 +64,12 @@ def test():
     """Checks the configured tokens against each provider."""
     results = configuration.test_configuration_tokens() 
     for label, res in results.items():
-        click.echo(f"{label}: {res['message']}")
+        if res["ok"] is None:
+            click.secho(f"{label}: {res['message']}", fg="yellow")
+        elif res["ok"]:
+            click.secho(f"{label}: {res['message']}", fg="green")
+        else:
+            click.secho(f"{label}: {res['message']}", fg="red")
     if any(not res['ok'] for res in results.values()):
         raise SystemExit(1)
     

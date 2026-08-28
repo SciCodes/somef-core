@@ -1,12 +1,6 @@
-# Software Metadata Extraction Framework (SOMEF)
+# SOMEF - Core package functionality
 
-[![Documentation Status](https://readthedocs.org/projects/somef/badge/?version=latest)](https://somef.readthedocs.io/en/latest/?badge=latest)
-[![Python](https://img.shields.io/pypi/pyversions/somef.svg?style=plastic)](https://badge.fury.io/py/somef) [![PyPI](https://badge.fury.io/py/somef.svg)](https://badge.fury.io/py/somef) [![DOI](https://zenodo.org/badge/190487675.svg)](https://zenodo.org/badge/latestdoi/190487675) [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/KnowledgeCaptureAndDiscovery/somef/HEAD?filepath=notebook%2FSOMEF%20Usage%20Example.ipynb) [![Project Status: Active – The project has reached a stable, usable state and is being actively developed.](https://www.repostatus.org/badges/latest/active.svg)](https://www.repostatus.org/#active)
-[![SWH](https://archive.softwareheritage.org/badge/origin/https://github.com/KnowledgeCaptureAndDiscovery/somef/)](https://archive.softwareheritage.org/browse/origin/?origin_url=https://github.com/KnowledgeCaptureAndDiscovery/somef)[![SWH](https://archive.softwareheritage.org/badge/swh:1:dir:ebfdd002d998a2e9054c974ba8206d867b99fcfa/)](https://archive.softwareheritage.org/swh:1:dir:ebfdd002d998a2e9054c974ba8206d867b99fcfa;origin=https://github.com/KnowledgeCaptureAndDiscovery/somef;visit=swh:1:snp:55accea716399b0cc89486e37fbaab028ed8e748;anchor=swh:1:rev:cefb0f9a53ba1fae671819f943e84c087aed6f7d)
-
-<img src="docs/logo.png" alt="logo" width="150"/>
-
-A command line interface for automatically extracting relevant metadata from code repositories (readme, configuration files, documentation, etc.).
+SOMEF-Core is the lightweight metadata extraction engine behind SOMEF. It works both as a command line tool and as a reusable library, without the machine learning components (supervised classifiers, ontology detection) that are part of the full SOMEF tool. See the SOMEF repository for the full documentation and ML capabilities.
 
 **Demo:** See a [demo running somef as a service](https://somef.linkeddata.es), through the [SOMEF-Vider tool](https://github.com/SoftwareUnderstanding/SOMEF-Vider/).
 
@@ -14,21 +8,20 @@ A command line interface for automatically extracting relevant metadata from cod
 
 ## Features
 
-Given a readme file (or a GitHub/Gitlab/Codeberg/Bitbucket repository) SOMEF will extract the following categories (if present), listed in alphabetical order:
+Given a readme file (or a GitHub/Gitlab/Codeberg/Bitbucket repository) SOMEF-Core will extract the following categories (if present), listed in alphabetical order:
 
 - **Acknowledgement**: Text acknowledging funding sources or contributors
-- **Application domain**: The application domain of the repository. Current supported domains include: Astrophysics, Audio, Computer vision, Graphs, Natural language processing, Reinforcement learning, Semantc web, Sequential. Domains are not mutually exclusive. These domains have been extracted from [awesome lists](https://github.com/topics/awesome-list) and [Papers with code](https://paperswithcode.com/). Find more information in our [documentation](https://somef.readthedocs.io/en/latest/)
 - **Authors**: Person(s) or organization(s) responsible for the project. We recognize the following properties:
   - Name: name of the author (including last name)
   - Given name: First name of an author
   - Family name: Last name of an author
   - Email: email of author
   - URL: website or ORCID associated with the author
-- **Application type**: type of software (command line application, notebook, ontology, scientific workflow, etc.)
+- **Application type**: type of software (command line application, notebook,scientific workflow, etc.). Note: Ontology type only detectect in SOMEF.
 - **Build file**: Build file(s) of the project. For example, files used to create a Docker image for the target software, package files, etc.
-- **Citation**: Preferred citation(s) as the authors have stated in their readme file. SOMEF recognizes Bibtex, Citation File Format files and other means by which authors cite their papers (e.g., by in-text citation). 
-For CITATION.cff files, SOMEF now generates two separate entries: one for the software tool and another for the preferred citation (if available). This ensures metadata like DOI or version is correctly assigned to each entity.
-SOMEF now performs citation reconciliation: scholarly publications (articles) are assigned in codemeta to `referencePublication`, while the software itself is credited in `creditText`. (See https://somef.readthedocs.io/en/latest/output/#codemeta-format).
+- **Citation**: Preferred citation(s) as the authors have stated in their readme file. SOMEF-Core recognizes Bibtex, Citation File Format files and other means by which authors cite their papers (e.g., by in-text citation). 
+For CITATION.cff files, SOMEF-Core now generates two separate entries: one for the software tool and another for the preferred citation (if available). This ensures metadata like DOI or version is correctly assigned to each entity.
+SOMEF-Core now performs citation reconciliation: scholarly publications (articles) are assigned in codemeta to `referencePublication`, while the software itself is credited in `creditText`. (See https://somef.readthedocs.io/en/latest/output/#codemeta-format).
 When using `-e`, publication metadata is enriched via OpenAlex. We recognize the following properties:
   - Title: Title of the publication
   - Author: list of author names in the publication
@@ -74,7 +67,6 @@ When using `-e`, publication metadata is enriched via OpenAlex. We recognize the
 - **Logo**: Main logo used to represent the target software component
 - **Maintainer**: Individuals or teams responsible for maintaining the software component, extracted from the CODEOWNERS file
 - **Name**: Name identifying a software component
-- **Ontologies**: Structured representation of the ontologies present in the repository
 - **Owner**: Name and type of the user or organization in charge of the repository
 - **Package distribution**: Links to package sites like pypi in case the repository has a package available.
 - **Package files**: Links to package files used to wrap the project in a package.
@@ -101,11 +93,10 @@ When using `-e`, publication metadata is enriched via OpenAlex. We recognize the
 - **Usage examples**: Assumptions and considerations recorded by the authors when executing a software component, or examples on how to use it
 - **Workflows**: URL and path to the computational workflow files present in the repository
 
-We use different supervised classifiers, header analysis, regular expressions, the GitHub/Gitlab/Codeberg and Bitbucket API to retrieve all these fields (more than one technique may be used for each field) and language specific metadata parsers (e.g., for package files). Each extraction records its provenance, with the confidence and technique used on each step. For more information check the [output format description](https://somef.readthedocs.io/en/latest/output/)
 
 ### Confidence values in header analysis
 
-When extracting metadata through header analysis, SOMEF filters out headers
+When extracting metadata through header analysis, SOMEF-Core filters out headers
 whose confidence is below a certain threshold to avoid false positives.
 For instance, a header with 11+ words receives a confidence of 0.1, which
 is considered too low for a reliable classification — such headers are
@@ -123,7 +114,7 @@ reasonable match quality are reported in the output.
 
 See full documentation at [https://somef.readthedocs.io/en/latest/](https://somef.readthedocs.io/en/latest/)
 
-## Cite SOMEF:
+## Cite SOMEF-Core:
 
 Journal publication (preferred):
 
@@ -160,17 +151,10 @@ pages={3032-3037}
 
 - Python 3.11 + (default version support). Python 3.9 and 3.10 will work, but are not supported anymore.
 
-SOMEF has been tested on Unix, MacOS and Windows Microsoft operating systems.
+SOMEF-Core has been tested on Unix, MacOS and Windows Microsoft operating systems.
 
-If you face any issues when installing SOMEF, please make sure you have installed the following packages: `build-essential`, `libssl-dev`, `libffi-dev` and `python3-dev`.
+If you face any issues when installing SOME-Core, please make sure you have installed the following packages: `build-essential`, `libssl-dev`, `libffi-dev` and `python3-dev`.
 
-## Install from Pypi
-
-SOMEF [is available in Pypi!](https://pypi.org/project/somef/) To install it just type:
-
-```
-pip install somef
-```
 
 ## Install from GitHub
 
@@ -179,7 +163,7 @@ To run SOMEF, please follow the next steps:
 Clone this GitHub repository
 
 ```
-git clone https://github.com/KnowledgeCaptureAndDiscovery/somef.git
+git clone https://github.com/SciCodes/somef-core.git
 ```
 
 We use [Poetry](https://python-poetry.org/) to ensure library compatibility. It can be installed as follows:
@@ -201,7 +185,7 @@ poetry --version
 Install somef and all their dependencies.
 
 ```
-cd /somef
+cd /somef_core
 poetry install
 ```
 
@@ -221,7 +205,7 @@ To learn more about poetry environment management, visit their official document
 Test the SOMEF installation run:
 
 ```bash
-somef --help
+somef_core --help
 ```
 
 If everything goes fine, you should see:
@@ -233,45 +217,18 @@ Options:
   -h, --help  Show this message and exit.
 
 Commands:
-  configure  Configure credentials
+  configure  Configure credentials file path
   describe   Running the Command Line Interface
   version    Show somef version.
 ```
 
-## Installing through Docker
-
-We provide a Docker image with SOMEF already installed. To run through Docker, you may build the Dockerfile provided in the repository by running:
-
-```bash
-docker build -t somef .
-```
-
-Or just use the Docker image already built in [DockerHub](https://hub.docker.com/r/kcapd/somef):
-
-```bash
-docker pull kcapd/somef
-```
-
-Then, to run your image just type:
-
-```bash
-docker run --rm -it kcapd/somef 
-```
-
-And you will be ready to use SOMEF (see section below). If you want to have access to the results we recommend [mounting a volume](https://docs.docker.com/storage/volumes/). For example, the following command will mount the current directory as the `out` folder in the Docker image:
-
-```bash
-docker run -it --rm -v $PWD/:/out kcapd/somef 
-```
-
-If you move any files produced by somef into `/out`, then you will be able to see them in your current directory.
 
 ## Configure
 
-Before running SOMEF for the first time, you must **configure** it appropriately (you only need to do this once). Run:
+Before running SOMEF-Core for the first time, you must **configure** it appropriately (you only need to do this once). Run:
 
 ```bash
-somef configure
+somef_core configure
 ```
 
 And you will be asked to provide the following:
@@ -280,28 +237,26 @@ And you will be asked to provide the following:
 - A **GitLab** authentication token [**optional**], used for GitLab.com and self-hosted GitLab instances (e.g., `gitlab.in2p3.fr`). Tokens are per-instance. Note: **a token from GitLab.com does not work for self-hosted servers**. Create one at `https://gitlab.com/-/user_settings/personal_access_tokens` (scope: `read_api`). Without a token, some self-hosted GitLab instances may not return rate limit information.
 - A **Codeberg** authentication token [**optional**], used to retrieve metadata from Codeberg. Create one at `https://codeberg.org/user/settings/applications` (permissions: `read:repository`, `read:user`). Codeberg (Forgejo) does not expose rate limit headers even with a token.
 - A **Bitbucket** authentication token [**optional**], used for Bitbucket Cloud. Create an API token with scopes at `https://bitbucket.org/account/settings/api-tokens/` (permissions: `read:repository:bitbucket`, `read:account`). You will also need to provide your Atlassian account email, as Bitbucket API tokens use Basic authentication (`email:token` encoded in base64). Without a token you are limited to 60 requests/hour.
-- The path to the trained classifiers (pickle files). If you have your own classifiers, you can provide them here. Otherwise, you can leave it blank.
-
 - A download size limit in MB [**optional, default 200**]. SOMEF skips repository archives larger than this limit. Increase it if you need to process large repositories. You can also override it with the `--download-limit` parameter in the `describe` command.
 
-If you want SOMEF to be automatically configured (without any tokens and using the default classifiers) just type:
+If you want SOMEF to be automatically configured (without any tokens) just type:
 
 ```bash
-somef configure -a
+somef_core configure -a
 ```
 
 For showing help about the available options, run:
 
 ```bash
-somef configure --help
+somef_core configure --help
 ```
 
 Which displays:
 
 ```bash
-Usage: somef configure [OPTIONS]
+Usage: somef_core configure [OPTIONS]
 
-  Configure GitHub credentials and classifiers file path
+  Configure GitHub credentials file path
 
 Options:
   -a, --auto  Automatically configure SOMEF
@@ -317,10 +272,10 @@ Commands:
 To verify that the authentication tokens stored in your configuration file are valid **without having to run SOMEF**, run:
 
 ```bash
-somef configure test
+somef_core configure test
 ```
 
-This contacts each configured provider's API (api.github.com, gitlab.com, codeberg.org, bitbucket.org) with the token stored in ~/.somef/config.json and reports the status of each one, e.g.:
+This contacts each configured provider's API (api.github.com, gitlab.com, codeberg.org, bitbucket.org) with the token stored in ~/.somef_core/config.json and reports the status of each one, e.g.:
 ```bash
 GitHub: token valid
 GitLab: token valid
@@ -334,18 +289,18 @@ Bitbucket tokens must start with Basic (as set by somef configure); otherwise th
 The command exits with a non-zero status code if any configured token is invalid, which is useful for scripts and CI.
 
 
-### Updating SOMEF
+### Updating SOMEF-Core
 
-If you update SOMEF to a newer version, you must `configure` again the library (by running `somef configure`). The rationale is that different versions may rely on classifiers which may be stored in a different path.
+If you update SOMEF to a newer version, you must `configure` again the library (by running `somef_core configure`). 
 
 If you installed through poetry and you  have upgraded the python environment (e.g., from 3.10 to 3.11), you may need to run `poetry env use python3.11` and `poetry install` to update your environment.
 
 ## Usage
 
 ```bash
-$ somef describe --help
+$ somef_core describe --help
   SOMEF Command Line Interface
-Usage: somef describe [OPTIONS]
+Usage: somef_core describe [OPTIONS]
 
   Running the Command Line Interface
 
@@ -435,7 +390,7 @@ Options:
                                   with --branch or --tag.
 ```
 
-Alternatively, you can set tokens via environment variables or by running `somef configure`, which stores them permanently.
+Alternatively, you can set tokens via environment variables or by running `somef_core configure`, which stores them permanently.
 The CLI flags take precedence over stored config when valid.
 
 
@@ -457,14 +412,13 @@ For a detailed technical breakdown of the fields mapped by each external service
 The following command extracts all metadata available from [https://github.com/dgarijo/Widoco/](https://github.com/dgarijo/Widoco/).
 
 ```bash
-somef describe -r https://github.com/dgarijo/Widoco/ -o test.json -t 0.8
+somef_core describe -r https://github.com/dgarijo/Widoco/ -o test.json -t 0.8
 ```
 
 We recommend having a high value for the `threshold` parameter, 0.8 (default) or above.
 Additional configuration parameters (such as the `similarity_threshold` for header analysis) 
-can be set in `~/.somef/config.json`. See the [usage documentation](https://somef.readthedocs.io/en/latest/usage/) for details.
+can be set in `~/.somef_core/config.json`. See the [usage documentation](https://somef.readthedocs.io/en/latest/usage/) for details.
 
-Try SOMEF in Binder with our sample notebook: [![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/KnowledgeCaptureAndDiscovery/somef/HEAD?filepath=notebook%2FSOMEF%20Usage%20Example.ipynb)
 
 ## Contribute:
 
@@ -476,19 +430,17 @@ Priyanka O.
 ## Next features:
 
 To see upcoming features, please have a look at our [open issues](https://github.com/KnowledgeCaptureAndDiscovery/somef/issues) and [milestones](https://github.com/KnowledgeCaptureAndDiscovery/somef/milestones)
+For the time being, issues, feature requests and improvements are tracked and managed in the SOMEF repository. Please open your issues there.
 
-## Extending SOMEF categories:
-
-To run a classifier with an additional category or remove an existing one, a corresponding path entry in the config.json should be provided and the category type should be added/removed in the category variable in `cli.py`.
 
 ## Metadata Support
 
-SOMEF supports the extraction and analysis of metadata in package files of several programming languages.  Current support includes: `setup.py` and `pyproject.toml` for Python, `pom.xml` for Java, `.gemspec` for Ruby, `DESCRIPTION` for R, `bower.json` for JavaScript, HTML or CSS, `.cabal` for Haskell, `cargo.toml` for RUST, `composer` for PHP, `.juliaProject.toml` for Julia , `AUTHORS`, `codemeta.json`, `publiccode.yml`, `dockerfile` and `citation.cff`
+SOMEF-Core supports the extraction and analysis of metadata in package files of several programming languages.  Current support includes: `setup.py` and `pyproject.toml` for Python, `pom.xml` for Java, `.gemspec` for Ruby, `DESCRIPTION` for R, `bower.json` for JavaScript, HTML or CSS, `.cabal` for Haskell, `cargo.toml` for RUST, `composer` for PHP, `.juliaProject.toml` for Julia , `AUTHORS`, `codemeta.json`, `publiccode.yml`, `dockerfile` and `citation.cff`
 This includes identifying dependencies, runtime requirements, and development tools specified in project configuration files.  
 
 ## Limitations
 
-SOMEF is designed to work primarily with repositories written in English.  
+SOMEF-Core is designed to work primarily with repositories written in English.  
 Repositories in other languages may not be processed as effectively, and results could be incomplete or less accurate.
 
 ### Enrichment with `-e`
@@ -502,11 +454,11 @@ The `-e` (or `--enrichment`) flag queries external APIs to complete the extracte
 
 ## Repository versions: default behavior, branch tag and commit
 
-SOMEF allows analyzing specific versions of a repository. If no version is specified, SOMEF will analyze the default branch of the repository (usually `main` or `master`). The following options let you control exactly which version of the codebase is inspected.
+SOMEF-Core allows analyzing specific versions of a repository. If no version is specified, SOMEF will analyze the default branch of the repository (usually `main` or `master`). The following options let you control exactly which version of the codebase is inspected.
 
 ### Default behavior
 
-If neither `--branch` nor `--tag` is provided, SOMEF will:
+If neither `--branch` nor `--tag` is provided, SOMEF-Core will:
 
 - Clone the repository.
 - Detect and analyze the **default branch** set up in github.
@@ -516,11 +468,11 @@ This is the recommended option when you want to describe the current version of 
 ### Using a branch
 
 ```bash
-somef describe -r <repo_url> --branch <branch_name> ...
-somef describe -r <repo_url> --b <branch_name> ...
+somef_core describe -r <repo_url> --branch <branch_name> ...
+somef_core describe -r <repo_url> --b <branch_name> ...
 ```
 
-Forces SOMEF to analyze a specific branch of the repository.
+Forces SOMEF-Core to analyze a specific branch of the repository.
 
 Useful when:
 
@@ -531,7 +483,7 @@ Useful when:
 ### Using a tag
 
 ```bash
-somef describe -r <repo_url> --tag <tag_name> ...
+somef_core describe -r <repo_url> --tag <tag_name> ...
 ```
 
 Analyzes a specific tagged version of the repository.
@@ -540,13 +492,13 @@ Recommended when:
 
 - You need reproducible results (tags do not change over time).
 - You want to document a released version of the software.
-- You integrate SOMEF into pipelines that operate on versioned artifacts.
+- You integrate SOMEF-Core into pipelines that operate on versioned artifacts.
 
 
 ### Using a commit
 
 ```bash
-somef describe -r <repo_url> --commit <commit_sha> ...
+somef_core describe -r <repo_url> --commit <commit_sha> ...
 ```
 
 ### Restrictions
