@@ -19,7 +19,7 @@ def cli():
     click.echo("SOftware Metadata Extraction Framework (SOMEF) Command Line Interface")
 
 
-@cli.group(help="Configure repository credentials and classifiers file path", invoke_without_command=True)
+@cli.group(help="Configure repository credentials", invoke_without_command=True)
 @click.option('-a', '--auto', help="Automatically configure SOMEF", is_flag=True, default=False)
 @click.option('-b', '--base_uri', type=URLParamType(), help="Base URI for somef transformations",
               default=constants.CONF_DEFAULT_BASE_URI)
@@ -87,6 +87,7 @@ def test():
     "-ic",
     is_flag=True,
     default=False,
+    hidden=True,
     help="Flag to ignore running the classifiers (by default False)"
 )
 @click.option(
