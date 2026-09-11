@@ -1,6 +1,10 @@
 # SOMEF - Core package functionality
 
-SOMEF-Core is the lightweight metadata extraction engine behind SOMEF. It works both as a command line tool and as a reusable library, without the machine learning components (supervised classifiers, ontology detection) that are part of the full SOMEF tool. See the SOMEF repository for the full documentation and ML capabilities.
+[![PyPI version](https://img.shields.io/pypi/v/somef-core.svg)](https://pypi.org/project/somef-core/)
+
+SOMEF-Core is a lightweight export of [SOMEF](https://github.com/KnowledgeCaptureAndDiscovery/somef) (the parent project), containing its core metadata extraction functionality. It works both as a command line tool and as a reusable library, without the machine learning components (supervised classifiers, ontology detection) that are part of the full SOMEF tool. See the SOMEF repository for the full documentation and ML capabilities.
+
+> This release of SOMEF-Core (0.0.1) corresponds to SOMEF [0.11.3](https://github.com/KnowledgeCaptureAndDiscovery/somef/releases/tag/0.11.3).
 
 **Demo:** See a [demo running somef as a service](https://somef.linkeddata.es), through the [SOMEF-Vider tool](https://github.com/SoftwareUnderstanding/SOMEF-Vider/).
 
@@ -155,6 +159,22 @@ SOMEF-Core has been tested on Unix, MacOS and Windows Microsoft operating system
 
 If you face any issues when installing SOME-Core, please make sure you have installed the following packages: `build-essential`, `libssl-dev`, `libffi-dev` and `python3-dev`.
 
+
+## Install from Pypi
+
+SOMEF-Core [is available in Pypi!](https://pypi.org/project/somef-core/) To install it just type:
+
+```
+pip install somef-core
+```
+
+### NLTK data
+
+SOMEF-Core uses [NLTK](https://www.nltk.org/) / WordNet to match README section headers (e.g. "Getting Started", "Citation") against metadata categories. Download the required data before running SOMEF-Core:
+
+```bash
+python -m nltk.downloader wordnet omw-1.4 punkt punkt_tab stopwords
+```
 
 ## Install from GitHub
 
