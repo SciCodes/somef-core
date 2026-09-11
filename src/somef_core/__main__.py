@@ -87,7 +87,7 @@ def test():
     "-ic",
     is_flag=True,
     default=False,
-    hideen=True,
+    hidden=True,
     help="Flag to ignore running the classifiers (by default False)"
 )
 @click.option(
