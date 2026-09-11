@@ -151,7 +151,7 @@ def test_configuration_tokens():
         if key not in file_paths:
             results[label] = {"ok": None, "message": "token not configured"}
             continue
-        
+
         stored = file_paths[key]
         if label == "Bitbucket" and not stored.lower().startswith("basic "):
             results[label] = {

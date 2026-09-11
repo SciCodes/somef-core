@@ -824,13 +824,14 @@ class TestCodemetaExport(unittest.TestCase):
     def test_schema_owner(self):
         """Checks that organization owner is correctly exported as schema:owner with expanded context (issue #892)"""
 
+
         assert "schema:owner" in self.json_content, "Missing schema:owner in JSON"
         owners = self.json_content["schema:owner"]
         assert isinstance(owners, list), "schema:owner should be a list"
         assert any(o.get("@type") == "Organization" for o in owners), "schema:owner should contain an Organization"
         assert any(o.get("name") == "KnowledgeCaptureAndDiscovery" for o in owners), "Expected KnowledgeCaptureAndDiscovery as owner"
+
         
-              
     def test_codemeta_sunpy_reference_publication(self):
         """
         Checks that a CITATION.cff with DOI, title and structured authors is exported as
@@ -989,6 +990,131 @@ class TestCodemetaExport(unittest.TestCase):
             "name": "National Science Foundation",
             "url": "https://doi.org/10.13039/100000001",
         }
+
+        os.remove(output_path)
+
+
+    def test_issue_303_mel_tnnt_featurelist(self):
+        """Checks if codemeta file has featureList category, with one entry per ...Features section detected """
+        somef_cli.run_cli(threshold=0.8,
+                          ignore_classifiers=False,
+                          repo_url=None,
+                          doc_src=test_data_path + "README-MEL-TNNT.md",
+                          in_file=None,
+                          output=None,
+                          graph_out=None,
+                          graph_format="turtle",
+                          codemeta_out=test_data_path + 'test_codemeta_mel_tnnt_featurelist.json',
+                          pretty=True,
+                          missing=True)
+
+        json_file_path = test_data_path + "test_codemeta_mel_tnnt_featurelist.json"
+        # check if the file has been created in the correct path
+        assert os.path.exists(json_file_path), f"File {json_file_path} doesn't exist."
+
+        with open(json_file_path, "r") as f:
+            data = json.load(f)
+
+        assert "featureList" in data, "Key 'featureList' is missing in JSON"
+        feature_list = data["featureList"]
+        assert isinstance(feature_list, list)
+        assert len(feature_list) == 2, f"Expected 2 featureList entries, got {len(feature_list)}"
+        assert any("Comprehensive metadata extraction" in v for v in feature_list)
+        assert any("Implements 21 models" in v for v in feature_list)
+
+        os.remove(json_file_path)
+
+    def test_issue_1102_name_reference(self):
+        """Checks that referencePublication has the correct name and no null identifier"""
+        output_path = test_data_path + 'test_codemeta_reference_name.json'
+        somef_cli.run_cli(threshold=0.8,
+                        ignore_classifiers=False,
+                        repo_url=None,
+                        local_repo=test_data_repositories + "fair-ontologies",
+                        output=None,
+                        codemeta_out=output_path,
+                        pretty=True,
+                        readme_only=False)
+
+        with open(output_path) as f:
+            json_content = json.load(f)
+
+        reference = json_content.get(constants.CAT_CODEMETA_REFERENCEPUBLICATION, [])
+        assert reference, "Key 'referencePublication' is missing in JSON"
+
+        assert reference[0]["name"] == "FOOPS!: An Ontology Pitfall Scanner for the FAIR Principles", \
+            f"Expected correct title, got '{reference[0].get('name')}'"
+        assert "identifier" not in reference[0], f"Expected no identifier (null), got '{reference[0].get('identifier')}'"
+
+        os.remove(output_path)
+
+
+    def test_requirements_codemeta(self):
+        """Checks that Maven dependencies present in both pom.xml and an already
+        existing codemeta.json in the repo (and therefore merged by SOMEF into a
+        single requirement entry whose 'technique' and 'source' fields become
+        lists instead of plain strings) are still included as structured
+        softwareRequirements in the generated codemeta.json, instead of being
+        silently dropped."""
+        output_path = test_data_path + 'test_codemeta_requirements.json'
+        somef_cli.run_cli(threshold=0.8,
+                        ignore_classifiers=False,
+                        repo_url=None,
+                        local_repo=test_data_repositories + "fair-ontologies",
+                        output=None,
+                        codemeta_out=output_path,
+                        pretty=True,
+                        readme_only=False)
+
+        with open(output_path) as f:
+            json_content = json.load(f)
+
+        requirements = json_content.get(constants.CAT_CODEMETA_SOFTWAREREQUIREMENTS, [])
+        assert requirements, "Key 'softwareRequirements' is missing or empty in JSON"
+
+        requirement_names = {req.get("name") for req in requirements}
+
+        maven_dependencies = {
+            "springdoc-openapi-ui", "spring-boot-starter-web", "spring-boot-starter-test",
+            "slf4j-api", "slf4j-simple", "jsoup", "gson", "junit", "owlapi-apibinding"
+        }
+
+        missing = maven_dependencies - requirement_names
+        assert not missing, (
+            "Maven dependencies found in both pom.xml and codemeta.json (merged by "
+            "SOMEF into entries with list-valued 'technique'/'source') were dropped "
+            f"from softwareRequirements: {missing}"
+        )
+
+        springdoc = next(req for req in requirements if req["name"] == "springdoc-openapi-ui")
+        assert springdoc.get("version") == "1.7.0", \
+            f"Expected version '1.7.0' for springdoc-openapi-ui, got '{springdoc.get('version')}'"
+
+        os.remove(output_path)
+
+
+    def test_issue_1105_credit_text_deduplication(self):
+        """Checks that creditText for the same publication is not duplicated. 
+            Problem with citations with the same title but different authors, which should be deduplicated to a single creditText entry.
+        """
+        output_path = test_data_path + 'test_codemeta_credit_text.json'
+        somef_cli.run_cli(threshold=0.8,
+                        ignore_classifiers=False,
+                        repo_url=None,
+                        local_repo=test_data_repositories + "fair-ontologies",
+                        output=None,
+                        codemeta_out=output_path,
+                        pretty=True,
+                        readme_only=False)
+
+        with open(output_path) as f:
+            json_content = json.load(f)
+
+        credit_text = json_content.get(constants.CAT_CODEMETA_CREDITTEXT, [])
+        assert credit_text, "Key 'creditText' is missing in JSON"
+
+        assert len(credit_text) == 1, \
+            f"Expected a single deduplicated creditText entry, got {len(credit_text)}: {credit_text}"
 
         os.remove(output_path)
 

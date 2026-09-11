@@ -29,3 +29,4 @@ repos.txt
 !**/test_data/api_responses/bitbucket/*.json
 uv.lock
 .python-version
+rebuild_from_somef/
