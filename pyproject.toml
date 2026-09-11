@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "somef_core"
-version = "0.11.2"
-description = "SOftware Metadata Extraction Framework: A tool for automatically extracting relevant software metadata from a source code repository (README, package files, etc)."
+version = "0.0.1"
+description = "SOMEF-Core: lightweight metadata extraction engine for software repositories, usable as a CLI tool or as a library, without the ML-based classifiers and ontology detection of the full SOMEF tool."
 authors = ["Daniel Garijo <daniel.garijo@upm.es>"]
 readme = "README.md"
 packages = [
