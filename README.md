@@ -72,7 +72,7 @@ When using `-e`, publication metadata is enriched via OpenAlex. We recognize the
 - **Package files**: Links to package files used to wrap the project in a package.
 - **Programming languages**: Languages used in the repository
 - **Related papers**: URL to possible related papers within the repository stated within the readme file (from Arxiv)
-- **Releases**: Pointer to the available versions of a software component. For each release, somef will track the following properties:
+- **Releases**: Pointer to the available versions of a software component. For each release, somef-core will track the following properties:
   - Description: Release notes
   - Author: Agent responsible of creating the release
   - Name: Name of the release
@@ -174,7 +174,7 @@ curl -sSL https://install.python-poetry.org | python3 -
 
 This option is recommended over installing Poetry with pip install.
 
-Now Poetry will handle the installation of SOMEF and all its dependencies configured in the `toml` file.
+Now Poetry will handle the installation of SOMEF-Core and all its dependencies configured in the `toml` file.
 
 To test the correct installation of poetry run (poetry version `> 2.0.0`):
 
@@ -182,7 +182,7 @@ To test the correct installation of poetry run (poetry version `> 2.0.0`):
 poetry --version
 ```
 
-Install somef and all their dependencies.
+Install somef-core and all their dependencies.
 
 ```
 cd /somef_core
@@ -202,7 +202,7 @@ source /path_to_env/ENV_NAME/bin/activate
 
 To learn more about poetry environment management, visit their official documentation [here](https://python-poetry.org/docs/managing-environments/).
 
-Test the SOMEF installation run:
+Test the SOMEF-Core installation run:
 
 ```bash
 somef_core --help
@@ -211,7 +211,7 @@ somef_core --help
 If everything goes fine, you should see:
 
 ```bash
-Usage: somef [OPTIONS] COMMAND [ARGS]...
+Usage: somef_core [OPTIONS] COMMAND [ARGS]...
 
 Options:
   -h, --help  Show this message and exit.
@@ -219,7 +219,7 @@ Options:
 Commands:
   configure  Configure credentials file path
   describe   Running the Command Line Interface
-  version    Show somef version.
+  version    Show somef-core version.
 ```
 
 
@@ -233,13 +233,13 @@ somef_core configure
 
 And you will be asked to provide the following:
 
-- A **GitHub** authentication token [**optional, leave blank if not used**], which SOMEF uses to retrieve metadata from GitHub. If you don't include an authentication token, you can still use SOMEF. However, you may be limited to a series of requests per hour. For more information, see [https://help.github.com/en/github/authenticating-to-github/creating-a-personal-access-token-for-the-command-line](https://help.github.com/en/github/authenticating-to-github/creating-a-personal-access-token-for-the-command-line)
+- A **GitHub** authentication token [**optional, leave blank if not used**], which SOMEF-Core uses to retrieve metadata from GitHub. If you don't include an authentication token, you can still use SOMEF. However, you may be limited to a series of requests per hour. For more information, see [https://help.github.com/en/github/authenticating-to-github/creating-a-personal-access-token-for-the-command-line](https://help.github.com/en/github/authenticating-to-github/creating-a-personal-access-token-for-the-command-line)
 - A **GitLab** authentication token [**optional**], used for GitLab.com and self-hosted GitLab instances (e.g., `gitlab.in2p3.fr`). Tokens are per-instance. Note: **a token from GitLab.com does not work for self-hosted servers**. Create one at `https://gitlab.com/-/user_settings/personal_access_tokens` (scope: `read_api`). Without a token, some self-hosted GitLab instances may not return rate limit information.
 - A **Codeberg** authentication token [**optional**], used to retrieve metadata from Codeberg. Create one at `https://codeberg.org/user/settings/applications` (permissions: `read:repository`, `read:user`). Codeberg (Forgejo) does not expose rate limit headers even with a token.
 - A **Bitbucket** authentication token [**optional**], used for Bitbucket Cloud. Create an API token with scopes at `https://bitbucket.org/account/settings/api-tokens/` (permissions: `read:repository:bitbucket`, `read:account`). You will also need to provide your Atlassian account email, as Bitbucket API tokens use Basic authentication (`email:token` encoded in base64). Without a token you are limited to 60 requests/hour.
-- A download size limit in MB [**optional, default 200**]. SOMEF skips repository archives larger than this limit. Increase it if you need to process large repositories. You can also override it with the `--download-limit` parameter in the `describe` command.
+- A download size limit in MB [**optional, default 200**]. SOMEF-Core skips repository archives larger than this limit. Increase it if you need to process large repositories. You can also override it with the `--download-limit` parameter in the `describe` command.
 
-If you want SOMEF to be automatically configured (without any tokens) just type:
+If you want SOMEF-Core to be automatically configured (without any tokens) just type:
 
 ```bash
 somef_core configure -a
@@ -259,8 +259,8 @@ Usage: somef_core configure [OPTIONS]
   Configure GitHub credentials file path
 
 Options:
-  -a, --auto  Automatically configure SOMEF
-  -b, --base_uri URL  Base URI for somef transformations
+  -a, --auto  Automatically configure SOMEF-Core
+  -b, --base_uri URL  Base URI for somef-core transformations
   -h, --help  Show this message and exit.
 
 Commands:
@@ -285,13 +285,13 @@ Bitbucket: token valid but with limited permissions (403)
 
 401 means the token is invalid; 403 means it is valid but lacks the required scopes; any other non-200 response is reported as unexpected.
 Providers without a configured token are simply skipped.
-Bitbucket tokens must start with Basic (as set by somef configure); otherwise the test reports an incorrect format without contacting the API.
+Bitbucket tokens must start with Basic (as set by somef_core configure); otherwise the test reports an incorrect format without contacting the API.
 The command exits with a non-zero status code if any configured token is invalid, which is useful for scripts and CI.
 
 
 ### Updating SOMEF-Core
 
-If you update SOMEF to a newer version, you must `configure` again the library (by running `somef_core configure`). 
+If you update SOMEF-Core to a newer version, you must `configure` again the library (by running `somef_core configure`). 
 
 If you installed through poetry and you  have upgraded the python environment (e.g., from 3.10 to 3.11), you may need to run `poetry env use python3.11` and `poetry install` to update your environment.
 
@@ -336,10 +336,10 @@ Options:
 
   -m, --missing                   The JSON will include a field
                                   somef_missing_categories to report with the
-                                  missing metadata fields that SOMEF was not
+                                  missing metadata fields that SOMEF-Core was not
                                   able to find.
 
-  -kt, --keep_tmp PATH            SOMEF will NOT delete the temporary folder
+  -kt, --keep_tmp PATH            SOMEF-Core will NOT delete the temporary folder
                                   where files are stored for analysis. Files
                                   will be stored at the
                                   desired path
@@ -351,7 +351,7 @@ Options:
                                   sources (pom.xml, requirements.txt, etc.)
 
 
-  -ra, --reconcile_authors         SOMEF will extract additional information 
+  -ra, --reconcile_authors         SOMEF-Core will extract additional information 
                                   from certain files like CODEOWNERS. 
                                   This may require extra API
                                   requests and increase execution time
