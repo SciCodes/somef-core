@@ -1,10 +1,12 @@
 import json
 import os
 import unittest
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 from pathlib import Path
 from .. import somef_cli
+from .. import process_repository
 from ..utils import constants
+from ..utils import enrichment
 from ..utils.enrichment import run_enrichment
 
 test_data_path = str(Path(__file__).parent / "test_data") + os.path.sep
@@ -17,18 +19,20 @@ class TestEnrichment(unittest.TestCase):
         """Tests that --enrich adds openalex_id, openaire_id, swhid,
         orcid identifier and funding project properties to the output."""
 
-        somef_cli.run_cli(threshold=0.8,
-                          repo_url="https://github.com/oeg-upm/rsfc",
-                          output=test_data_path + "test-enrich.json",
-                          enrich=True,
-                          pretty=True)
-
+        try:
+            somef_cli.run_cli(threshold=0.8,
+                            repo_url="https://github.com/oeg-upm/rsfc",
+                            output=test_data_path + "test-enrich.json",
+                            enrich=True,
+                            pretty=True)
+        except process_repository.InsufficientTokenPermissions as e:
+            raise unittest.SkipTest(f"Token lacks permissions: {e}. "
+                            "Run `somef configure` (without -a) to set a token with proper scopes.")
+        
         with open(test_data_path + "test-enrich.json") as f:
             data = json.load(f)
 
         citations = data.get("citation", [])
-        # self.assertTrue(any("openalex_id" in c["result"] for c in citations))
-        # self.assertTrue(any("openaire_id" in c["result"] for c in citations))
 
         identifiers = data.get(constants.CAT_IDENTIFIER, [])
         constants.PROP_OPENAIRE_ID
@@ -41,6 +45,22 @@ class TestEnrichment(unittest.TestCase):
             for i in identifiers
         ))
         self.assertTrue(any(constants.PROP_SWHID in i["result"] for i in identifiers))
+
+        expected_openaire_id = (
+            "https://explore.openaire.eu/search/result?id=doi_dedup___::a899dfda14b0ddb088edaa1c17b991aa"
+        )
+        self.assertTrue(any(
+            "10.5281/zenodo.16531481" in i["result"].get("value", "")
+            and i["result"].get(constants.PROP_OPENAIRE_ID) == expected_openaire_id
+            for i in identifiers
+        ), "Identifier for DOI 10.5281/zenodo.16531481 must hold the exact OpenAIRE explore id")
+
+        self.assertTrue(all(
+            i["result"][constants.PROP_OPENAIRE_ID].startswith(
+                "https://explore.openaire.eu/search/result?id="
+            )
+            for i in identifiers if constants.PROP_OPENAIRE_ID in i["result"]
+        ), "Every openaire_id must be a valid OpenAIRE explore result URL")
 
         authors = data.get("author", [])
         self.assertTrue(any(
@@ -56,20 +76,65 @@ class TestEnrichment(unittest.TestCase):
         os.remove(test_data_path + "test-enrich.json")
 
 
+    @unittest.skipIf(os.getenv("CI") == "true", "Skipped in CI because it requires external APIs")
+    def test_enrichment_openaire_v4_fair_ontologies(self):
+        """Tests that enrichment returns the exact OpenAIRE explore id for
+        the fair_ontologies DOI (10.5281/zenodo.14767999). Issue 1135"""
+
+        output_file = test_data_path + "test-enrich-fair-ontologies.json"
+
+        try:
+            somef_cli.run_cli(threshold=0.8,
+                            repo_url="https://github.com/oeg-upm/fair_ontologies",
+                            output=output_file,
+                            enrich=True,
+                            pretty=True)
+        except process_repository.InsufficientTokenPermissions as e:
+            raise unittest.SkipTest(f"Token lacks permissions: {e}. "
+                            "Run `somef configure` (without -a) to set a token with proper scopes.")
+        
+        with open(output_file) as f:
+            data = json.load(f)
+
+        identifiers = data.get(constants.CAT_IDENTIFIER, [])
+
+        expected_openaire_id = (
+            "https://explore.openaire.eu/search/result?id=doi_dedup___::9af59b2a73cb3b9a6b4612cfcfed507b"
+        )
+        self.assertTrue(any(
+            "10.5281/zenodo.14767999" in i["result"].get("value", "")
+            and i["result"].get(constants.PROP_OPENAIRE_ID) == expected_openaire_id
+            for i in identifiers
+        ), "Identifier for DOI 10.5281/zenodo.14767999 must hold the exact OpenAIRE explore id")
+
+        self.assertTrue(all(
+            i["result"][constants.PROP_OPENAIRE_ID].startswith(
+                "https://explore.openaire.eu/search/result?id="
+            )
+            for i in identifiers if constants.PROP_OPENAIRE_ID in i["result"]
+        ), "Every openaire_id must be a valid OpenAIRE explore result URL")
+
+        os.remove(output_file)
+
+
     @unittest.skipIf(os.getenv("CI") == "true", "Skipped in CI")
     def test_enrichment_funding(self):
         """Tests funding enrichment with a repo that has codemeta.json with funding."""
+        try:
+            somef_cli.run_cli(threshold=0.8,
+                            repo_url="https://github.com/codemeta/codemeta",
+                            output=test_data_path + "test-enrich-funding.json",
+                            enrich=True,
+                            pretty=True)
+        except process_repository.InsufficientTokenPermissions as e:
+            raise unittest.SkipTest(f"Token lacks permissions: {e}. "
+                            "Run `somef configure` (without -a) to set a token with proper scopes.")
         
-        somef_cli.run_cli(threshold=0.8,
-                        repo_url="https://github.com/codemeta/codemeta",
-                        output=test_data_path + "test-enrich-funding.json",
-                        enrich=True,
-                        pretty=True)
-
         with open(test_data_path + "test-enrich-funding.json") as f:
             data = json.load(f)
 
         fundings = data.get("funding", [])
+        print(fundings)
         self.assertTrue(any("project_code" in f["result"] for f in fundings))
         self.assertTrue(any("project_title" in f["result"] for f in fundings))
 
@@ -167,3 +232,61 @@ class TestEnrichment(unittest.TestCase):
         self.assertNotIn(constants.PROP_OPENAIRE_ID, cit_result)
         self.assertIn(constants.PROP_OPENALEX_ID, cit_result)
         self.assertEqual(cit_result[constants.PROP_OPENALEX_ID], "https://openalex.org/W123456")
+
+
+class TestIssue778Provider(unittest.TestCase):
+
+    def setUp(self):
+        # Clear provider cache between tests to keep them isolated
+        if hasattr(enrichment, '_provider_cache'):
+            enrichment._provider_cache.clear()
+
+    def test_issue_778_swh_provider(self):
+        results = {
+            constants.PROP_IDENTIFIER: [{
+                "result": {
+                    "type": constants.URL,
+                    "value": "https://archive.softwareheritage.org/swh:1:rev:cefb0f9a53ba1fae671819f943e84c087aed6f7d"
+                }
+            }]
+        }
+        results = enrichment.run_enrichment(results)
+        result = results[constants.PROP_IDENTIFIER][0]["result"]
+        self.assertEqual(result[constants.PROP_PROVIDER], constants.SWH_PROVIDER_NAME)
+
+    @patch('somef_core.utils.enrichment.requests.get')
+    def test_issue_778_doi_provider_datacite(self, mock_get):
+        mock_prefix_resp = Mock()
+        mock_prefix_resp.status_code = 200
+        mock_prefix_resp.json.return_value = {
+            "data": {
+                "relationships": {
+                    "providers": {
+                        "data": [{"id": "cern"}]
+                    }
+                }
+            }
+        }
+
+        mock_provider_resp = Mock()
+        mock_provider_resp.status_code = 200
+        mock_provider_resp.json.return_value = {
+            "data": {
+                "attributes": {
+                    "name": "CERN - European Organization for Nuclear Research"
+                }
+            }
+        }
+
+        mock_get.side_effect = [mock_prefix_resp, mock_provider_resp]
+
+        provider = enrichment.get_doi_provider("10.5281/zenodo.11093793")
+        self.assertIn("CERN", provider)
+
+    @patch('somef_core.utils.enrichment.requests.get')
+    def test_issue_778_doi_provider_not_datacite(self, mock_get):
+        mock_resp = Mock()
+        mock_resp.status_code = 404
+        mock_get.return_value = mock_resp
+
+        self.assertIsNone(enrichment.get_doi_provider("10.1162/qss_a_00167"))
