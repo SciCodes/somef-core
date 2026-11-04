@@ -830,7 +830,7 @@ class TestCodemetaExport(unittest.TestCase):
         assert isinstance(owners, list), "schema:owner should be a list"
         assert any(o.get("@type") == "Organization" for o in owners), "schema:owner should contain an Organization"
         assert any(o.get("name") == "KnowledgeCaptureAndDiscovery" for o in owners), "Expected KnowledgeCaptureAndDiscovery as owner"
-
+     
         
     def test_codemeta_sunpy_reference_publication(self):
         """

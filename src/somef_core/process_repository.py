@@ -29,14 +29,49 @@ def header_template(authorization=None):
 
 
 def is_gitlab(gitlab_server):
+    # Avoid false positives with other platforms
+    if gitlab_server == "gitlab.com":
+        return True
+    if gitlab_server in ['github.com', 'bitbucket.org']:
+        return False
+    if gitlab_server == constants.CODEBERG_DOMAIN:
+        return False
+    
     api_url = f"https://{gitlab_server}/api/v4/projects"
+
     try:
         response = requests.get(api_url, timeout=5)
-        if response.status_code in [200, 401, 403]: 
+        if response.status_code in [200, 401, 403,429]: 
             return True
+    
     except requests.RequestException:
         pass
     return False
+
+
+class RateLimitExceeded(Exception):
+    """Raised when a repository API keeps answering HTTP 429 after all retries."""
+
+class InsufficientTokenPermissions(Exception):
+    """Raised when a token lacks required permissions or scopes."""
+    
+def _retry_after_seconds(response, default):
+    """
+    Seconds to wait after an HTTP 429. Uses Retry-After when present. Returns None when
+    the server asks for more than RATE_LIMIT_MAX_WAIT_SECONDS (e.g. an hourly quota),
+    because waiting would not help.
+    """
+    header = response.headers.get("Retry-After")
+    if header is not None:
+        try:
+            wait = float(header)
+        except (TypeError, ValueError):
+            wait = default
+        if wait > constants.RATE_LIMIT_MAX_WAIT_SECONDS:
+            return None
+        return max(1, wait)
+    return max(1, min(default, constants.RATE_LIMIT_MAX_WAIT_SECONDS))
+
 
 # the same as requests.get(args).json(), but protects against rate limiting
 def rate_limit_get(*args, backoff_rate=2, initial_backoff=1, size_limit_mb=None, **kwargs):
@@ -90,6 +125,8 @@ def rate_limit_get(*args, backoff_rate=2, initial_backoff=1, size_limit_mb=None,
             logging.warning(f"HEAD/stream request failed: {e}. Continuing with GET...")
 
     rate_limited = True
+    retries_429 = 0
+    wait_429 = constants.RATE_LIMIT_DEFAULT_WAIT_SECONDS
     date = ""
     response = {}
     while rate_limited:
@@ -104,8 +141,17 @@ def rate_limit_get(*args, backoff_rate=2, initial_backoff=1, size_limit_mb=None,
         if response.status_code == 401: 
             raise Exception("Invalid token. Run `somef configure` to set a valid token.") 
         if response.status_code == 403: 
-            raise Exception("Token lacks required permissions or scopes.")
-        
+            raise InsufficientTokenPermissions("Token lacks required permissions or scopes.")
+        # HTTP 429 (e.g. GitLab answers with plain text, not JSON, and sometimes no rate limit headers)
+        if response.status_code == 429:
+            wait = _retry_after_seconds(response, wait_429)
+            if wait is None or retries_429 >= constants.RATE_LIMIT_MAX_RETRIES:
+                raise RateLimitExceeded(f"Rate limit exceeded: {url}")
+            retries_429 += 1
+            wait_429 *= 2
+            logging.warning(f"HTTP 429 for {url}. Waiting {wait} seconds (retry {retries_429}/{constants.RATE_LIMIT_MAX_RETRIES})")
+            time.sleep(wait)
+            continue
         date = response.headers.get("Date", "")
         # Show rate limit information if available
         rate_limit_remaining = response.headers.get("X-RateLimit-Remaining") or response.headers.get("RateLimit-Remaining")
@@ -239,20 +285,28 @@ def load_gitlab_repository_metadata(repo_metadata: Result, repository_url, autho
             default_branch = "/".join(path_components[idx+1:])
 
     # could be gitlab.com or some gitlab self-hosted GitLab servers like gitlab.in2p3.fr
-    if repository_url.rfind("gitlab.com") > 0:
-        project_id = get_project_id(repository_url, False, authorization)
+    routing_markers = {"-", "tree", "blob", "issues", "merge_requests", "wikis", "snippets"}
+    project_parts = []
+    for p in path_components:
+        if p in routing_markers:
+            break
+        project_parts.append(p)
+    encoded_project_path = quote("/".join(project_parts), safe="")
+    if url.netloc == "gitlab.com":
+        api_url = f"https://gitlab.com/api/v4/projects/{encoded_project_path}"
+        project_id = get_project_id(api_url, True, authorization)
         project_api_url = f"https://gitlab.com/api/v4/projects/{project_id}"
+        project_path_full = "/".join(project_parts)
     else:
-        project_path = url.path.lstrip("/")  # "gammalearn/gammalearn"
-        encoded_project_path = quote(project_path, safe="") # Codifica "/" como "%2F"
-        # Build url of api to get id
         api_url = f"https://{url.netloc}/api/v4/projects/{encoded_project_path}"
-        project_id = get_project_id(api_url, True, authorization,use_config=False)
+        project_id = get_project_id(api_url, True, authorization, use_config=False)
         logging.info(f'Project_id: {project_id}')
         project_api_url = f"https://{url.netloc}/api/v4/projects/{project_id}"
-    
+        project_path_full = "/".join(project_parts)
+
     logging.info(f"Downloading {project_api_url}")
-    details, date = rate_limit_get(project_api_url, headers=gitlab_header_template(authorization, use_config=False))
+    use_cfg = (url.netloc == "gitlab.com")
+    details, date = rate_limit_get(project_api_url, headers=gitlab_header_template(authorization, use_config=use_cfg))
     project_details = details.json()
     # date = details.headers["date"]
 
@@ -335,7 +389,7 @@ def load_gitlab_repository_metadata(repo_metadata: Result, repository_url, autho
     if commit: 
         default_branch = commit
 
-    project_path = "/".join(path_components)
+    project_path = project_path_full if 'project_path_full' in locals() else "/".join(project_parts)
 
     #                          {constants.PROP_VALUE: f"https://{url.netloc}/{owner}/{repo_name}/",
     repo_metadata.add_result(constants.CAT_CODE_REPOSITORY,
@@ -494,11 +548,11 @@ def load_gitlab_repository_metadata(repo_metadata: Result, repository_url, autho
         )
     logging.info("Repository information successfully loaded. \n")
     # return repo_metadata, owner, repo_name, default_branch
-    return repo_metadata, owner, repo_name, default_branch, project_path
+    return repo_metadata, owner, repo_name, default_branch, project_path, project_id
 
 
 
-def download_gitlab_files(directory, owner, repo_name, repo_branch, repo_ref, authorization=None, download_limit=None):
+def download_gitlab_files(directory, owner, repo_name, repo_branch, repo_ref, authorization=None, download_limit=None, project_id=None):
     """
     Download all repository files from a GitLab repository
     Parameters
@@ -523,14 +577,24 @@ def download_gitlab_files(directory, owner, repo_name, repo_branch, repo_ref, au
     # repo_archive_url = f"https://{url.netloc}/{owner}/{repo_name}/-/archive/{repo_branch}/{repo_name}-{repo_branch}.zip"
     # if len(path_components) == 4:
     #         repo_archive_url = f"https://{url.netloc}/{owner}/{repo_name}/-/archive/{repo_branch}/{path_components[3]}.zip"
-    repo_archive_url = (
-        f"https://{url.netloc}/{project_path}/-/archive/{repo_branch}/{repo_name}-{repo_branch}.zip"
-    )
+    # repo_archive_url = (
+    #     f"https://{url.netloc}/{project_path}/-/archive/{repo_branch}/{repo_name}-{repo_branch}.zip"
+    # )
+
+    if project_id is not None and url.netloc == "gitlab.com":
+        repo_archive_url = f"https://{url.netloc}/api/v4/projects/{project_id}/repository/archive.zip?sha={repo_branch}"
+    else:
+        repo_archive_url = (
+            f"https://{url.netloc}/{project_path}/-/archive/{repo_branch}/{repo_name}-{repo_branch}.zip"
+        )
 
     logging.info(f"Downloading {repo_archive_url}")
     repo_download, _ = rate_limit_get(repo_archive_url, headers=gitlab_header_template(authorization), size_limit_mb=download_limit)
     if repo_download is None:
         logging.warning(f"Repository archive skipped due to size limit: {constants.SIZE_DOWNLOAD_LIMIT_MB} MB")
+        return None
+    if repo_download.status_code != 200:
+        logging.error(f"Error downloading GitLab archive: HTTP {repo_download.status_code}")
         return None
     repo_zip = repo_download.content
 
@@ -572,10 +636,10 @@ def download_readme(owner, repo_name, default_branch, repo_type, authorization, 
     if repo_type is constants.RepositoryType.GITLAB:
         base = f"https://gitlab.com/{project_path}" if project_path else f"https://gitlab.com/{owner}/{repo_name}"
         primary_url = f"{base}/-/raw/{default_branch}/README.md"
-        secondary_url = f"{base}/-/raw/{fallback_branch}/README.mdREADME.md"
+        secondary_url = f"{base}/-/raw/{fallback_branch}/README.md"
     elif repo_type is constants.RepositoryType.GITHUB:
         primary_url = f"https://raw.githubusercontent.com/{owner}/{repo_name}/{default_branch}/README.md"
-        secondary_url = f"https://raw.githubusercontent.com/{owner}/{repo_name}/{fallback_branch}/README.mdREADME.md"
+        secondary_url = f"https://raw.githubusercontent.com/{owner}/{repo_name}/{fallback_branch}/README.md"
     elif repo_type is constants.RepositoryType.CODEBERG:
         primary_url = f"https://codeberg.org/{owner}/{repo_name}/raw/branch/{default_branch}/README.md"
         secondary_url = f"https://codeberg.org/{owner}/{repo_name}/raw/branch/{fallback_branch}/README.md"
@@ -896,7 +960,7 @@ def do_crosswalk(data, crosswalk_table):
 
 
 def download_repository_files(owner, repo_name, default_branch, repo_type, target_dir, repo_ref=None,
-                              authorization=None, download_limit=None):
+                              authorization=None, download_limit=None, project_id=None):
     """
     Given a repository, this method will download its files and return the readme text
     Parameters
@@ -918,7 +982,7 @@ def download_repository_files(owner, repo_name, default_branch, repo_type, targe
     if repo_type == constants.RepositoryType.GITHUB:
         return download_github_files(target_dir, owner, repo_name, default_branch, authorization, download_limit)
     elif repo_type == constants.RepositoryType.GITLAB:
-        return download_gitlab_files(target_dir, owner, repo_name, default_branch, repo_ref, authorization,download_limit)
+        return download_gitlab_files(target_dir, owner, repo_name, default_branch, repo_ref, authorization,download_limit, project_id)
     elif repo_type == constants.RepositoryType.CODEBERG:
         return download_codeberg_files(target_dir, owner, repo_name, default_branch, authorization, download_limit)
     elif repo_type == constants.RepositoryType.BITBUCKET:
@@ -1390,15 +1454,38 @@ def download_codeberg_files(directory, owner, repo_name, repo_branch, authorizat
     return repo_dir
 
 
+# def gitlab_header_template(authorization=None, use_config=True):
+#     header = {}
+#     file_paths = configuration.get_configuration_file()
+
+#     if authorization is not None:
+#         header[constants.PROP_AUTHORIZATION] = authorization
+#         logging.info("GitLab: using authorization token passed directly")   
+#     elif use_config and constants.CONF_GITLAB_AUTHORIZATION in file_paths:
+#         header[constants.PROP_AUTHORIZATION] = file_paths[constants.CONF_GITLAB_AUTHORIZATION]
+#         logging.info("GitLab: authorization token found in config")
+
+#     return header
+
 def gitlab_header_template(authorization=None, use_config=True):
     header = {}
     file_paths = configuration.get_configuration_file()
+    token = None
     if authorization is not None:
-        header[constants.PROP_AUTHORIZATION] = authorization
-        logging.info("GitLab: using authorization token passed directly")   
+        token = authorization
+        logging.info("GitLab: using authorization token passed directly")
     elif use_config and constants.CONF_GITLAB_AUTHORIZATION in file_paths:
-        header[constants.PROP_AUTHORIZATION] = file_paths[constants.CONF_GITLAB_AUTHORIZATION]
+        token = file_paths[constants.CONF_GITLAB_AUTHORIZATION]
         logging.info("GitLab: authorization token found in config")
+    if token and isinstance(token, str):
+        token_clean = token.strip()
+        if token_clean.lower().startswith('bearer '):
+            token_clean = token_clean[7:].strip()
+        elif token_clean.lower().startswith('token '):
+            token_clean = token_clean[6:].strip()
+        elif token_clean.lower().startswith('private-token '):
+            token_clean = token_clean[14:].strip()
+        header['Authorization'] = f'Bearer {token_clean}'
     return header
 
 def codeberg_header_template(authorization=None):

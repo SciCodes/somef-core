@@ -2,10 +2,26 @@ import json
 import os
 import unittest
 import validators
+import requests
 from pathlib import Path
+from unittest.mock import patch
 from .. import somef_cli
+from .. import process_repository
 from ..utils import constants
 
+
+def _has_gitlab_token() -> bool:
+    """Check if a GitLab authorization token is configured in the SOMEF config file."""
+    config_path = Path.home() / ".somef" / "config.json"
+    if not config_path.exists():
+        return False
+    try:
+        with config_path.open("r") as f:
+            config = json.load(f)
+        return "GitlabAuthorization" in config
+    except (json.JSONDecodeError, KeyError, OSError):
+        return False
+    
 test_data_path = str(Path(__file__).parent / "test_data") + os.path.sep
 test_data_repositories = str(Path(__file__).parent / "test_data" / "repositories") + os.path.sep
 
@@ -26,6 +42,9 @@ class TestCli(unittest.TestCase):
     #     text_file.close()
     #     assert data.find("sd:dateCreated") >= 0
 
+
+
+        
     def test_issue_280(self):
         """Checks if SOMEF fails with a non-valid URL"""
         with open(test_data_path + "input-test.txt", "r") as in_handle:
@@ -432,13 +451,26 @@ class TestCli(unittest.TestCase):
 
 
     @unittest.skipIf(os.getenv("CI") == "true", "Skipped in CI because it is already verified locally")
+    @patch.object(constants, "RATE_LIMIT_MAX_RETRIES", 0) # no waiting in tests: skip instead
     def test_gitlab(self):
         """Checks if SOMEF works against Gitlab. Full analysis"""
-        somef_cli.run_cli(threshold=0.8,
-                          repo_url="https://gitlab.com/jleblay/tokei",
-                          output=test_data_path + "test-314-2.json",
-                          pretty=True,
-                          readme_only=False)
+
+        if not _has_gitlab_token():
+            raise unittest.SkipTest("No GitLab token configured. "
+                                    "Run `somef configure` to set a GitLab token.")
+        try:
+            somef_cli.run_cli(threshold=0.8,
+                              repo_url="https://gitlab.com/jleblay/tokei",
+                              output=test_data_path + "test-314-2.json",
+                              pretty=True,
+                              readme_only=False)
+        except process_repository.RateLimitExceeded as e:
+            raise unittest.SkipTest(f"GitLab rate limit exceeded: {e}. "
+                                    "Run `somef configure` to set a GitLab token.")
+        except requests.exceptions.ConnectionError:
+            raise unittest.SkipTest("GitLab connection error (likely no token configured). "
+                                    "Run `somef configure` to set a GitLab token.")
+
         text_file = open(test_data_path + "test-314-2.json", "r")
         data = text_file.read()
         text_file.close()
@@ -469,9 +501,11 @@ class TestCli(unittest.TestCase):
         json_content = json.loads(data)
         readme_url = json_content[constants.CAT_README_URL][0]
         excerpt = readme_url[constants.PROP_RESULT][constants.PROP_VALUE]
-        print(excerpt)
-        # assert excerpt == 'https://raw.githubusercontent.com/oeg-upm/wot-hive/main/README.md'
-        assert excerpt == 'https://raw.githubusercontent.com////README.md' 
+
+        # For local repositories we expect a local path to the README
+        self.assertTrue(excerpt.endswith("README.md"))
+        self.assertTrue(os.path.exists(excerpt))
+
         os.remove(test_data_path + "test-403.json")
 
     def test_issue_408(self):
@@ -567,19 +601,26 @@ class TestCli(unittest.TestCase):
     def test_issue_255_1(self):
         """Tests if somef can detect the abscence of wikis if a repo does not have it."""
 
-        somef_cli.run_cli(threshold=0.8,
-                          ignore_classifiers=False,
-                          repo_url="https://github.com/SoftwareUnderstanding/software_types/",
-                          local_repo=None,
-                          doc_src=None,
-                          in_file=None,
-                          output=test_data_path + "test-255-1.json",
-                          graph_out=None,
-                          graph_format="turtle",
-                          codemeta_out=None,
-                          pretty=True,
-                          missing=True,
-                          readme_only=False)
+        try:
+            somef_cli.run_cli(threshold=0.8,
+                            ignore_classifiers=False,
+                            repo_url="https://github.com/SoftwareUnderstanding/software_types/",
+                            local_repo=None,
+                            doc_src=None,
+                            in_file=None,
+                            output=test_data_path + "test-255-1.json",
+                            graph_out=None,
+                            graph_format="turtle",
+                            codemeta_out=None,
+                            pretty=True,
+                            missing=True,
+                            readme_only=False)
+        except requests.exceptions.ConnectionError:
+            raise unittest.SkipTest("GitHub connection error (likely no token configured). "
+                                "Run `somef configure` to set a GitHub token.")
+        except process_repository.InsufficientTokenPermissions:
+            raise unittest.SkipTest("Insufficient token permissions. Run `somef configure` (without -a) to set a token with proper scopes.")
+        
         text_file = open(test_data_path + "test-255-1.json", "r")
         data = text_file.read()
         text_file.close()
@@ -651,20 +692,27 @@ class TestCli(unittest.TestCase):
 
     @unittest.skipIf(os.getenv("CI") == "true", "Skipped in CI because it is already verified locally")
     def test_issue_353(self):
-        """Tests that somef can successfully download a given github repo (reportedly failing)"""
-        somef_cli.run_cli(threshold=0.8,
-                          ignore_classifiers=False,
-                          repo_url="https://github.com/proycon/analiticcl",
-                          local_repo=None,
-                          doc_src=None,
-                          in_file=None,
-                          output=test_data_path + "test-353.json",
-                          graph_out=None,
-                          graph_format="turtle",
-                          codemeta_out=None,
-                          pretty=True,
-                          missing=True,
-                          readme_only=False)
+
+        try:
+            somef_cli.run_cli(threshold=0.8,
+                            ignore_classifiers=False,
+                            repo_url="https://github.com/proycon/analiticcl",
+                            local_repo=None,
+                            doc_src=None,
+                            in_file=None,
+                            output=test_data_path + "test-353.json",
+                            graph_out=None,
+                            graph_format="turtle",
+                            codemeta_out=None,
+                            pretty=True,
+                            missing=True,
+                            readme_only=False)
+        except requests.exceptions.ConnectionError:
+            raise unittest.SkipTest("GitHub connection error (likely no token configured). "
+                                    "Run `somef configure` to set a GitHub token.")
+        except process_repository.InsufficientTokenPermissions:
+            raise unittest.SkipTest("Insufficient token permissions. Run `somef configure` (without -a) to set a token with proper scopes.")
+        
         text_file = open(test_data_path + "test-353.json", "r")
         data = text_file.read()
         text_file.close()
@@ -813,4 +861,24 @@ class TestCli(unittest.TestCase):
         assert constants.CAT_ACKNOWLEDGEMENT not in json_content
         os.remove(test_data_path + "repositories/software_catalog/test-567.json")
 
-    
+
+    def test_issue_638_local_repo(self):
+        """Issue 638: analyzing a local repo should not produce broken raw GitHub URLs"""
+        somef_cli.run_cli(threshold=0.8,
+                          ignore_classifiers=False,
+                          repo_url=None,
+                          doc_src=None,
+                          local_repo=test_data_repositories + "Widoco",
+                          in_file=None,
+                          output=test_data_path + "test-638.json",
+                          graph_out=None,
+                          graph_format="turtle",
+                          codemeta_out=None,
+                          pretty=True,
+                          missing=False)
+        text_file = open(test_data_path + "test-638.json", "r")
+        data = text_file.read()
+        text_file.close()
+        # The main bug: broken URLs with empty owner/repo
+        self.assertNotIn("raw.githubusercontent.com///", data)
+        os.remove(test_data_path + "test-638.json")
